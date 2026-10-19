@@ -65,8 +65,8 @@ function parentOriginProof() {
 
   function findConversation(headers) {
     var url =
-      "/backend-api/conversations?conversation_origin=&exclude_conversation_origin=tpp" +
-      "&expand=false&hide_snorlax=false&is_archived=false&is_starred=false" +
+      "/backend-api/conversations?exclude_conversation_origin=tpp" +
+      "&expand=false&is_archived=false&is_starred=false" +
       "&limit=20&order=updated&offset=0";
     return getJson(
       url,
