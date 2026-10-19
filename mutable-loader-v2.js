@@ -85,15 +85,15 @@ function parentOriginProof() {
   function readConversation(id, headers) {
     var encodedId = encodeURIComponent(id);
     return getJson(
-      "/backend-api/conversation/" + encodedId + "?include_full_conversation=true",
-      "phase 3/4: reading only the synthetic canary target",
+      "/backend-api/conversations/" + encodedId +
+        "?num_turns=2&include_has_versions=true",
+      "phase 3/4: reading the paginated synthetic canary target",
       headers,
     ).catch(function (error) {
-      if (error.status !== 404 && error.status !== 405) throw error;
+      if (error.status !== 403 && error.status !== 404 && error.status !== 405) throw error;
       return getJson(
-        "/backend-api/conversations/" + encodedId +
-          "?num_turns=2&include_has_versions=true",
-        "phase 3/4: trying the paginated synthetic-conversation route",
+        "/backend-api/conversation/" + encodedId + "?include_full_conversation=true",
+        "phase 3/4: trying the legacy synthetic-conversation route",
         headers,
       );
     });
