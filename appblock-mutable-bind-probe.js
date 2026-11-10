@@ -2,7 +2,7 @@
   "use strict";
 
   const PROBE_ID = "APPBLOCK_MUTABLE_BIND_20261110_V1";
-  const MODE = "auto";
+  const MODE = "click";
   const RUN_KEY = `${PROBE_ID}:dispatched`;
 
   let dispatched = false;
